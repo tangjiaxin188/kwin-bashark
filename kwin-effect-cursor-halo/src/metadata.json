@@ -1,0 +1,9 @@
+{
+    "KPlugin": {
+        "Category": "Appearance",
+        "Description": "Draws a glowing halo ring around the cursor",
+        "EnabledByDefault": false,
+        "License": "GPL",
+        "Name": "Cursor Halo"
+    }
+}
