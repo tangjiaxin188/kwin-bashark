@@ -19,7 +19,6 @@ RenderHelper::RenderHelper()
 {
 }
 
-// ✅ 修改：增加颜色参数以支持彩色轨迹
 void RenderHelper::addTrailPoint(const QPointF &pos, qint64 timestampMs, const QColor &color)
 {
     if (m_trailCount < 16) {
@@ -73,6 +72,9 @@ void RenderHelper::addExplosionParticles(const QPointF &pos, const QColor &color
             p.size = (3.0f + static_cast<float>(std::rand()) / RAND_MAX * 4.0f) * static_cast<float>(particleScale);
             p.rotation = static_cast<float>(std::rand()) / RAND_MAX * 6.2832f;
             p.rotationSpeed = (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * 0.15f;
+            
+            // ✅ 爆炸三角形：maxLife=35 (比光环的25多活0.15秒左右)
+            p.life = 0; p.maxLife = 35;
             p.alpha = 1.0f;
             p.decay = 0.95f;
             p.isTriangle = true;
@@ -95,6 +97,9 @@ void RenderHelper::addTrailParticle(const QPointF &pos, const QColor &color)
             p.rotation = static_cast<float>(std::rand()) / RAND_MAX * 6.2832f;
             p.rotationSpeed = (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * 0.15f;
             p.size = 9.0f * static_cast<float>(particleScale);
+            
+            // ✅ 拖尾圆点：maxLife=25 (与光环同步快速消失)
+            p.life = 0; p.maxLife = 25;
             p.alpha = 1.0f;
             p.decay = 0.97f;
             p.isTriangle = false;
@@ -123,14 +128,21 @@ void RenderHelper::update(qreal frameScale)
         }
     }
 
+    // ✅ 修改：基于生命周期精确控制粒子淡出
     for (int i = 0; i < 512; ++i) {
         Particle &p = m_particles[i];
         if (p.active) {
             p.pos += p.velocity * frameScale;
             p.velocity *= std::pow(p.decay, frameScale);
             p.rotation += p.rotationSpeed * static_cast<float>(frameScale);
-            p.alpha -= 0.01f * static_cast<float>(frameScale);
-            if (p.alpha <= 0) p.active = false;
+            
+            // 精确淡出：当 life 趋近 maxLife 时，alpha 线性趋于 0
+            p.life += frameScale;
+            p.alpha = 1.0f - (p.life / p.maxLife);
+
+            if (p.life >= p.maxLife) {
+                p.active = false;
+            }
         }
     }
 }
@@ -155,13 +167,10 @@ void RenderHelper::renderGl(const RenderViewport &viewport) const
     const float scale = viewport.scale();
     GLVertexBuffer *vbo = GLVertexBuffer::streamingBuffer();
 
-    // ── 1️⃣ 拖尾轨迹 (使用动态颜色 + Alpha渐变) ──
     if (m_trailCount > 1) {
         glLineWidth(static_cast<float>(trailLineWidth));
         for (int i = 1; i < m_trailCount; ++i) {
             const float alpha = static_cast<float>(i) / (m_trailCount - 1);
-            
-            // ✅ 修复：使用轨迹记录的真实颜色，不再写死白色
             const QColor &c = m_trail[i].color;
             QColor drawColor(c.red(), c.green(), c.blue(), static_cast<int>(alpha * 255));
 
@@ -178,7 +187,6 @@ void RenderHelper::renderGl(const RenderViewport &viewport) const
         }
     }
 
-    // ── 2️⃣ 波纹填充圆 (半透明 + 无缝闭合) ──
     static const int CIRCLE_SEG = 64;
     const float theta = (2.0f * PI) / CIRCLE_SEG;
 
@@ -194,20 +202,15 @@ void RenderHelper::renderGl(const RenderViewport &viewport) const
         const float r = w.radius * scale;
         const float cx = w.pos.x() * scale;
         const float cy = w.pos.y() * scale;
-        
-        // ✅ 修复：填充颜色改为半透明 (Alpha=70, 约 27% 透明度)
-        const QColor fillColor(w.color.red(), w.color.green(), w.color.blue(), 70);
+        const QColor fillColor(w.color.red(), w.color.green(), w.color.blue(), 170);
 
         QList<QVector2D> verts;
         verts.reserve(CIRCLE_SEG + 3);
-        verts.append(QVector2D(cx, cy)); // 中心点
-
-        // ✅ 修复：生成 0~2PI 的顶点，显式追加起点以闭合 FAN 缺口
+        verts.append(QVector2D(cx, cy));
         for (int k = 0; k <= CIRCLE_SEG; ++k) {
             float angle = k * theta;
             verts.append(QVector2D(cx + r * std::cos(angle), cy + r * std::sin(angle)));
         }
-        // 再次添加起点，确保 GL_TRIANGLE_FAN 最后一个三角形完美闭合
         verts.append(verts[1]); 
 
         vbo->reset();
@@ -217,7 +220,6 @@ void RenderHelper::renderGl(const RenderViewport &viewport) const
         vbo->render(GL_TRIANGLE_FAN);
     }
 
-    // ── 3️⃣ 装饰弧线 ──
     glLineWidth(3.7f);
     for (int i = 0; i < 64; ++i) {
         const WaveData &w = m_waves[i];
@@ -252,7 +254,6 @@ void RenderHelper::renderGl(const RenderViewport &viewport) const
         }
     }
 
-    // ── 4️⃣ 粒子 ──
     glLineWidth(1.5f);
     for (int i = 0; i < 512; ++i) {
         const Particle &p = m_particles[i];
