@@ -1,6 +1,5 @@
 /*
     SPDX-FileCopyrightText: 2025
-
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 
@@ -19,7 +18,6 @@ CursorHaloEffect::CursorHaloEffect()
     m_activeColor = m_sparkColor;
     m_lastPresentTime = std::chrono::milliseconds::zero();
 
-    // 同步配置到 renderhelper
     m_renderer.particleScale = 1.5;
     m_renderer.waveMaxLife = 25;
     m_renderer.ringMaxLife = 50;
@@ -107,8 +105,6 @@ bool CursorHaloEffect::isActive() const
     return m_renderer.hasContent();
 }
 
-// ─────────────────────────── 鼠标事件（1:1 对应 QML MouseArea）────────────────────────────
-
 void CursorHaloEffect::slotMouseChanged(const QPointF &pos, const QPointF &old,
                                         Qt::MouseButtons buttons, Qt::MouseButtons oldButtons,
                                         Qt::KeyboardModifiers, Qt::KeyboardModifiers)
@@ -120,18 +116,18 @@ void CursorHaloEffect::slotMouseChanged(const QPointF &pos, const QPointF &old,
     const bool wasMid = oldButtons & Qt::MiddleButton;
     const bool wasRight = oldButtons & Qt::RightButton;
 
-    // ── 移动拖尾（对应 QML handleMouseMove）──
+    // ── 移动拖尾 ──
     const qreal dist = std::hypot(pos.x() - old.x(), pos.y() - old.y());
     if (dist > 2) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
-        m_renderer.addTrailPoint(pos, now);
+        // ✅ 修复：传入当前颜色，确保轨迹跟随按键颜色
+        m_renderer.addTrailPoint(pos, now, m_activeColor);
 
-        // 拖尾粒子（对应 QML: Math.random() < 0.3 && mouseArea.pressed）
         if ((isLeft || isMid || isRight) && (std::rand() % 100 < 30))
             m_renderer.addTrailParticle(pos, m_activeColor);
     }
 
-    // ── 点击检测（对应 QML onPressed）──
+    // ── 点击检测 ──
     auto wasJustPressed = [&](bool now, bool was) { return now && !was; };
 
     if (wasJustPressed(isLeft, wasLeft)) {
@@ -153,7 +149,7 @@ void CursorHaloEffect::slotMouseChanged(const QPointF &pos, const QPointF &old,
         m_renderer.addExplosionParticles(pos, m_rightColor, 4 + std::rand() % 4, 40 * m_renderer.particleScale);
     }
 
-    // ── 释放恢复（对应 QML onReleased）──
+    // ── 释放恢复 ──
     if (!isLeft && !isMid && !isRight && m_mouseDown) {
         m_mouseDown = false;
         m_activeColor = m_sparkColor;

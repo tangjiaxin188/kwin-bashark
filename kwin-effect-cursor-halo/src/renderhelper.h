@@ -52,6 +52,7 @@ struct TrailPoint
 {
     QPointF pos;
     qint64  timestamp; // ms
+    QColor  color;     // ✅ 增加颜色存储
 };
 
 // ──────────────────────────── 渲染助手 ────────────────────────────
@@ -62,7 +63,8 @@ public:
     RenderHelper();
 
     // ── 状态输入 ──
-    void addTrailPoint(const QPointF &pos, qint64 timestampMs);
+    // ✅ 增加颜色参数以支持彩色轨迹
+    void addTrailPoint(const QPointF &pos, qint64 timestampMs, const QColor &color);
     void addWave(const QPointF &pos, const QColor &color);
     void addExplosionParticles(const QPointF &pos, const QColor &color, int count = 4, qreal spawnOffset = 0);
     void addTrailParticle(const QPointF &pos, const QColor &color);
