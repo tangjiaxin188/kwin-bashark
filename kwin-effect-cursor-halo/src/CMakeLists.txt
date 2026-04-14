@@ -2,6 +2,7 @@ kcoreaddons_add_plugin(cursorhalo INSTALL_NAMESPACE "kwin/effects/plugins/")
 
 target_sources(cursorhalo PRIVATE
     cursorhalo.cpp
+    renderhelper.cpp
     main.cpp
 )
 
