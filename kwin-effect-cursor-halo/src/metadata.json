@@ -1,9 +1,16 @@
 {
     "KPlugin": {
+        "Id": "bashark-plasma",
+        "Name": "BAShark-plasma",
+        "Description": "绘制类似 https://github.com/DoomVoss/BASpark 的效果",
         "Category": "Appearance",
-        "Description": "Draws a glowing halo ring around the cursor",
         "EnabledByDefault": false,
-        "License": "GPL",
-        "Name": "Cursor Halo"
+        "License": "MIT",
+        "Version": "0.1",
+        "Authors": [
+            {
+                "Name": "Qwen-3.6plus and Tangjiaxin"
+            }
+        ]
     }
 }
