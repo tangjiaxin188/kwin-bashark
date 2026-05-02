@@ -28,10 +28,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            cmake extra-cmake-modules \
-            qt6-base-dev qt6-declarative-dev \
-            libkf6coreaddons-dev libkf6i18n-dev \
-            libkf6package-dev libkf6plasma-dev \
+            libepoxy-dev libplasma-dev kwin-dev \
             build-essential
 
       
