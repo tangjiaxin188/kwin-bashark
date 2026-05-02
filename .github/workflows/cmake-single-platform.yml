@@ -1,0 +1,76 @@
+# This starter workflow is for a CMake project running on a single platform. There is a different starter workflow if you need cross-platform coverage.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-multi-platform.yml
+name: CMake on a single platform
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+    # You can convert this to a matrix build if you need cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+
+  
+    - name: install kde
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake extra-cmake-modules \
+            qt6-base-dev qt6-declarative-dev \
+            libkf6coreaddons-dev libkf6i18n-dev \
+            libkf6package-dev libkf6plasma-dev \
+            build-essential
+
+      
+    
+    - uses: actions/checkout@v4
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      # Build your program with the given configuration
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      # Execute tests defined by the CMake configuration.
+      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+      run: ctest -C ${{env.BUILD_TYPE}}
+
+    - name: 打包产物
+      run: |
+          cd ${{github.workspace}}/build
+          # 打包整个安装结构（保留相对路径，方便用户解压到 /usr 或 ~/.local）
+          tar -czf ../kde-plugin.tar.gz ./*.so
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: kde-plugin-${{ github.sha }}
+        path: ${{github.workspace}}/kde-plugin.tar.gz
+        retention-days: 14
+
+      # 可选：如果是 Tag 推送，自动上传到 GitHub Release
+    - name: 创建 GitHub Release 并上传
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: kde-plugin.tar.gz
+        generate_release_notes: true
+
